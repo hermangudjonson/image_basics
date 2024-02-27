@@ -10,7 +10,7 @@ import datasets
 from pathlib import Path
 import functools
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
 from image_basics import model
 from image_basics.model import _DEFAULT_MODEL
@@ -79,6 +79,7 @@ def create_dataset(
     data_name: str = _DEFAULT_DATA,
     target: str = _DEFAULT_TARGET,
     model_name: str = _DEFAULT_MODEL,
+    use_train_transforms: bool = True,
     use_test_size: bool = False,
     cache_dir: str | Path | None = None,
     num_proc: int = 4,
@@ -94,7 +95,7 @@ def create_dataset(
     )
     # separate train and test transforms
     train_transforms = _get_model_transforms(
-        model_name, use_test_size=False, is_training=True
+        model_name, use_test_size=False, is_training=use_train_transforms
     )
     test_transforms = _get_model_transforms(
         model_name, use_test_size=use_test_size, is_training=False
@@ -121,7 +122,8 @@ def create_dataset(
     return train_processed, test_processed
 
 
-def create_dataloader(
+# deprecated, use create_dataloaders
+def _create_dataloader(
     dataset: datasets.Dataset,
     batch_size: int = 32,
     shuffle: bool = True,
@@ -138,6 +140,59 @@ def create_dataloader(
         num_workers=num_workers,
         drop_last=True,
     )
+
+
+def create_dataloaders(
+    data_name: str = _DEFAULT_DATA,
+    target: str = _DEFAULT_TARGET,
+    model_name: str = _DEFAULT_MODEL,
+    use_train_transforms: bool = True,
+    use_test_size: bool = False,
+    cache_dir: str | Path | None = None,
+    num_proc: int = 4,
+    train_subset: int | None = None,
+    val_subset: int | None = None,
+    train_batch_size: int = 32,
+    val_batch_size: int = 32,
+    shuffle_train: bool = True,
+):
+    """Data recipe entry point for a task.
+
+    default drop last batch if smaller
+    return train_dl, val_dl
+    """
+    train_ds, val_ds = create_dataset(
+        data_name=data_name,
+        target=target,
+        model_name=model_name,
+        use_train_transforms=use_train_transforms,
+        use_test_size=use_test_size,
+        cache_dir=cache_dir,
+        num_proc=num_proc,
+    )
+    # option to subset datasets
+    train_ds = (
+        train_ds
+        if train_subset is None
+        else Subset(train_ds, torch.arange(train_subset))
+    )
+    val_ds = val_ds if val_subset is None else Subset(val_ds, torch.arange(val_subset))
+
+    train_dl = DataLoader(
+        train_ds,
+        batch_size=train_batch_size,
+        shuffle=shuffle_train,
+        num_workers=num_proc,
+        drop_last=True,
+    )
+    val_dl = DataLoader(
+        val_ds,
+        batch_size=val_batch_size,
+        shuffle=False,
+        num_workers=num_proc,
+        drop_last=True,
+    )
+    return train_dl, val_dl
 
 
 def get_feature_data():

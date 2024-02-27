@@ -14,11 +14,23 @@ import torchmetrics.classification as tmc
 from loguru import logger
 from torchmetrics import MetricCollection
 
-from image_basics import utils
+import image_basics as ib
 
 
-def _get_optim():
-    pass
+def create_loss(loss_name: str = "cross_entropy", **kwargs):
+    if loss_name == "cross_entropy":
+        return torch.nn.CrossEntropyLoss(**kwargs)
+    else:
+        raise ValueError(f"{loss_name} is not a valid loss str")
+
+
+def create_optimizer(model: torch.nn.Module, optimizer_name: str = "adamw", **kwargs):
+    if optimizer_name == "sgd":
+        return torch.optim.SGD(model.parameters(), **kwargs)
+    elif optimizer_name == "adamw":
+        return torch.optim.AdamW(model.parameters(), **kwargs)
+    else:
+        raise ValueError(f"{optimizer_name} is not a valid optimizer str")
 
 
 def dispatch(f):
@@ -141,10 +153,11 @@ class CheckpointCallback:
     def __init__(self, metric_callback, checkpoint_dir=None):
         # relies on metric callback calculations
         self.metric_callback = metric_callback
+        # storage defaults to <cache>/_experiments/
         self.checkpoint_dir = (
             Path(checkpoint_dir)
             if checkpoint_dir is not None
-            else utils.WORKING_DIR
+            else ib.utils.CACHE_DIR
             / f"_experiments/exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
 
@@ -334,7 +347,15 @@ class SimpleTrainer:
         self.load_best_checkpoint()
 
 
-def create_trainer():
+def create_trainer(
+    model_params=None,
+    data_params=None,
+    loss_params=None,
+    optimizer_params=None,
+    num_epochs=1,
+    epoch_interval=1,
+    device="cpu",
+):
     """Recipe-style entry point that creates a training task.
 
     Takes task hyperparams, uses them to generate component objects,
@@ -342,7 +363,28 @@ def create_trainer():
     Returns trainer ojbect prepared to train.
     """
     # create model
+    model_params = model_params if model_params is not None else {}
+    model = ib.model.create_model(**model_params)
+
     # create dataloaders
+    data_params = data_params if data_params is not None else {}
+    train_dl, val_dl = ib.data.create_dataloaders(**data_params)
+
     # create loss
+    loss_params = loss_params if loss_params is not None else {}
+    loss = create_loss(**loss_params)
+
     # create optimizer
-    pass
+    optimizer_params = optimizer_params if optimizer_params is not None else {}
+    optimizer = create_optimizer(model, **optimizer_params)
+
+    return SimpleTrainer(
+        model,
+        train_dl,
+        val_dl,
+        loss,
+        optimizer,
+        num_epochs=num_epochs,
+        epoch_interval=epoch_interval,
+        device=device,
+    )
