@@ -4,7 +4,7 @@ usage:
 mkdir -p /kaggle/temp/
 git -C /kaggle/temp/ clone https://github.com/hermangudjonson/image_basics.git
 
-python setup_kaggle.py
+python /kaggle/temp/image_basics/tools/setup_kaggle.py
 source activate /root/mambaforge/envs/ibkaggle_v0
 """
 import subprocess
