@@ -26,4 +26,4 @@ dependencies:
   - loguru
   - pip
   - pip:
-      - -e /Users/hermangudjonson/Dropbox/ml_practice/pytorch/image_practice/image_basics
+      - -e /kaggle/temp/image_basics
