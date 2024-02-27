@@ -153,10 +153,11 @@ class CheckpointCallback:
     def __init__(self, metric_callback, checkpoint_dir=None):
         # relies on metric callback calculations
         self.metric_callback = metric_callback
+        # storage defaults to <cache>/_experiments/
         self.checkpoint_dir = (
             Path(checkpoint_dir)
             if checkpoint_dir is not None
-            else ib.utils.WORKING_DIR
+            else ib.utils.CACHE_DIR
             / f"_experiments/exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
 
