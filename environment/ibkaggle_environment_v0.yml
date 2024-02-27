@@ -1,0 +1,29 @@
+name: ibkaggle_v0
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python =3.11
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - notebook
+  - pytorch
+  - pyro-ppl
+  - torchvision
+  - torchinfo
+  - fastai
+  - timm
+  - huggingface_hub[cli]
+  - transformers
+  - datasets[vision]
+  - torchmetrics
+  - python-wget
+  - pandas-datareader
+  - scikit-learn
+  - fire
+  - cloudpickle
+  - loguru
+  - pip
+  - pip:
+      - -e /Users/hermangudjonson/Dropbox/ml_practice/pytorch/image_practice/image_basics

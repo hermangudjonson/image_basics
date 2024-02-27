@@ -4,6 +4,7 @@ import json
 import time
 from pathlib import Path
 
+import fire
 import torch
 from torch.utils.benchmark import Compare, Timer
 
@@ -71,7 +72,7 @@ def batch_time(batch_sizes=None, output_dir=None, device=None):
             globals={"trainer": trainer, "X_rand": X_rand},
             description=f"batch {b}",
         )
-        timer_result = timer.blocked_autorange()
+        timer_result = timer.blocked_autorange(min_run_time=1)
         forward_time = timer_result.median
         timer_list.append(timer_result)
 
@@ -99,3 +100,7 @@ def batch_time(batch_sizes=None, output_dir=None, device=None):
     timer_compare.print()
     print(results)
     _save_json(results, output_dir / "batch_timing.json")
+
+
+if __name__ == "__main__":
+    fire.Fire()
