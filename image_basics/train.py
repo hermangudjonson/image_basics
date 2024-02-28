@@ -218,7 +218,7 @@ class SimpleTrainer:
         optimizer,
         num_epochs=3,
         epoch_interval=1,
-        device="cpu",
+        device=None,
         callbacks=None,
     ):
         # params reflect training recipe, does not change trainer state
@@ -236,6 +236,9 @@ class SimpleTrainer:
 
     def _init_trainer(self):
         # prepare trainer, may change trainer state
+        # convert device name to device
+        self.device = ib.utils.get_device(self.device)
+
         # default callbacks
         self.callbacks = (
             self.callbacks
@@ -354,7 +357,7 @@ def create_trainer(
     optimizer_params=None,
     num_epochs=1,
     epoch_interval=1,
-    device="cpu",
+    device=None,
 ):
     """Recipe-style entry point that creates a training task.
 

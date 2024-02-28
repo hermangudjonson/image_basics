@@ -1,7 +1,7 @@
 name: iblocal_v0
 channels:
-  - conda-forge
   - pytorch
+  - conda-forge
 dependencies:
   - python =3.11
   - matplotlib
