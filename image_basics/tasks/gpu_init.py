@@ -26,8 +26,8 @@ def easy_pets_recipe():
             "data_name": "pets",
             "target": "label_cat_dog",
             "model_name": "regnety",
-            "train_subset": 320,
-            "val_subset": 320,
+            "train_subset": 512,
+            "val_subset": 512,
             "train_batch_size": 32,
             "val_batch_size": 32,
         },
@@ -35,6 +35,7 @@ def easy_pets_recipe():
             "lr": 1e-3,
         },
         "num_epochs": 1,
+        "device": None,
     }
     return hparams
 
@@ -57,7 +58,6 @@ def batch_time(batch_sizes=None, output_dir=None, device=None):
         if output_dir is not None
         else utils.WORKING_DIR / "results/gpu_init"
     )
-    device = utils.get_device(device)
 
     results = {}
     timer_list = []
@@ -65,8 +65,12 @@ def batch_time(batch_sizes=None, output_dir=None, device=None):
     for b in batch_sizes:
         hparams["data_params"]["train_batch_size"] = b
         hparams["data_params"]["val_batch_size"] = b
+        hparams["device"] = device
 
         trainer = train.create_trainer(**hparams)
+
+        device = utils.get_device(device)
+        print(f"using device {device}")
 
         X_rand = torch.randn(b, 3, 244, 244, device=device)
         trainer.model.to(device)
@@ -86,6 +90,7 @@ def batch_time(batch_sizes=None, output_dir=None, device=None):
         if device.type == "gpu":
             torch.cuda.synchronize()
         train_time = time.time() - train_start
+        print(f"trainer used device {trainer.device}")
 
         results[b] = dict(
             **{
