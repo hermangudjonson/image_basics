@@ -158,7 +158,7 @@ def create_dataloaders(
 ):
     """Data recipe entry point for a task.
 
-    default drop last batch if smaller
+    default drop last batch if smaller in train_dl (not in val_dl)
     return train_dl, val_dl
     """
     train_ds, val_ds = create_dataset(
@@ -190,7 +190,7 @@ def create_dataloaders(
         batch_size=val_batch_size,
         shuffle=False,
         num_workers=num_proc,
-        drop_last=True,
+        drop_last=False,
     )
     return train_dl, val_dl
 

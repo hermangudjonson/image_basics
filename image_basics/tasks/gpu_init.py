@@ -3,6 +3,7 @@
 import json
 import time
 from pathlib import Path
+from pprint import pprint
 
 import fire
 import torch
@@ -100,7 +101,7 @@ def batch_time(batch_sizes=None, output_dir=None, device=None):
     # display and save results
     timer_compare = Compare(timer_list)
     timer_compare.print()
-    print(results)
+    pprint(results)
     _save_json(results, output_dir / "batch_timing.json")
 
 
