@@ -52,7 +52,9 @@ def batch_time(batch_sizes=None, output_dir=None, device=None):
     """
     batch_sizes = batch_sizes if batch_sizes is not None else [2, 4]
     output_dir = (
-        output_dir if output_dir is not None else utils.WORKING_DIR / "results/gpu_init"
+        Path(output_dir)
+        if output_dir is not None
+        else utils.WORKING_DIR / "results/gpu_init"
     )
     device = utils.get_device(device)
 
