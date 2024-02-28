@@ -1,5 +1,6 @@
 """Simple script to setup python environment on kaggle.
 
+~6min run time, preference towards the mambaforge version.
 usage:
 mkdir -p /kaggle/temp/
 git -C /kaggle/temp/ clone https://github.com/hermangudjonson/image_basics.git
