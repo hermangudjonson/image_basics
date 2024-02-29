@@ -52,9 +52,11 @@ class MetricsCallback:
     def __init__(self, num_classes):
         # loss used during training
         self.epoch = -1
-        self.train_loss = 0
+        # dummy placeholder, gets reinitialized per epoch
+        self.train_loss = torch.tensor(0.0)
         self.train_results = {}
-        self.val_loss = 0
+        # dummy placeholder, gets reinitialized per epoch
+        self.val_loss = torch.tensor(0.0)
         self.val_results = {}
 
         # torchmetrics collection
@@ -68,11 +70,12 @@ class MetricsCallback:
         self.val_metrics = self.train_metrics.clone(prefix="val_")
 
     def on_train_start(self, trainer, epoch_idx):
-        self.train_loss = 0
+        # keeping running loss on device
+        self.train_loss = torch.tensor(0.0, device=trainer.device)
         self.train_metrics.to(trainer.device)
 
     def on_train_batch(self, trainer, batch_loss, y_pred, y, batch_idx, epoch_idx):
-        self.train_loss += batch_loss.item() * trainer.Bt
+        self.train_loss += batch_loss * trainer.Bt
         self.train_metrics.update(y_pred, y)
 
     def on_train_end(self, trainer, epoch_idx):
@@ -87,11 +90,12 @@ class MetricsCallback:
         self.train_metrics.reset()
 
     def on_val_start(self, trainer, epoch_idx):
-        self.val_loss = 0
+        # keeping running loss on device
+        self.val_loss = torch.tensor(0.0, device=trainer.device)
         self.val_metrics.to(trainer.device)
 
     def on_val_batch(self, trainer, batch_loss, y_pred, y, batch_idx, epoch_idx):
-        self.val_loss += batch_loss.item() * trainer.Bv
+        self.val_loss += batch_loss * trainer.Bv
         self.val_metrics.update(y_pred, y)
 
     def on_val_end(self, trainer, epoch_idx):
@@ -115,8 +119,8 @@ class MetricsCallback:
         """Provide dictionary of all current metrics."""
         return dict(
             epoch=self.epoch,
-            train_loss=self.train_loss,
-            val_loss=self.val_loss,
+            train_loss=self.train_loss.item(),
+            val_loss=self.val_loss.item(),
             **self.train_results,
             **self.val_results,
         )
