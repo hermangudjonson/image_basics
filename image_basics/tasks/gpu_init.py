@@ -19,28 +19,30 @@ def _save_json(data_dict: dict, json_file: Path):
         json.dump(data_dict, f, indent=4)
 
 
-def easy_pets_recipe():
+def easy_pets_recipe(subset_size=512, num_epochs=1, device=None):
     hparams = {
         "model_params": {"name": "regnety"},
         "data_params": {
             "data_name": "pets",
             "target": "label_cat_dog",
             "model_name": "regnety",
-            "train_subset": 512,
-            "val_subset": 512,
+            "train_subset": subset_size,
+            "val_subset": subset_size,
             "train_batch_size": 32,
             "val_batch_size": 32,
         },
         "optimizer_params": {
             "lr": 1e-3,
         },
-        "num_epochs": 1,
-        "device": None,
+        "num_epochs": num_epochs,
+        "device": device,
     }
     return hparams
 
 
-def batch_time(batch_sizes=None, subset_size=None, output_dir=None, device=None):
+def batch_time(
+    batch_sizes=None, subset_size=512, num_epochs=1, output_dir=None, device=None
+):
     """Compare matmul, forward pass and train() timing across batch sizes.
 
     Parameters
@@ -61,14 +63,12 @@ def batch_time(batch_sizes=None, subset_size=None, output_dir=None, device=None)
 
     results = {}
     timer_list = []
-    hparams = easy_pets_recipe()
+    hparams = easy_pets_recipe(
+        subset_size=subset_size, num_epochs=num_epochs, device=device
+    )
     for b in batch_sizes:
         hparams["data_params"]["train_batch_size"] = b
         hparams["data_params"]["val_batch_size"] = b
-        if subset_size is not None:
-            hparams["data_params"]["train_subset"] = subset_size
-            hparams["data_params"]["val_subset"] = subset_size
-        hparams["device"] = device
 
         trainer = train.create_trainer(**hparams)
 
@@ -77,10 +77,10 @@ def batch_time(batch_sizes=None, subset_size=None, output_dir=None, device=None)
 
         # matmul
         A = torch.randn(16, 3 * 244 * 244, device=device)  # ~3M params
-        b = torch.randn(3 * 244 * 244, b, device=device)
+        v = torch.randn(3 * 244 * 244, b, device=device)
         timer = Timer(
-            "A.matmul(b)",
-            globals={"A": A, "b": b},
+            "A.matmul(v)",
+            globals={"A": A, "v": v},
             description=f"batch {b}",
             sub_label="matmul",
         )

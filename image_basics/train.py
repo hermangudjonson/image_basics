@@ -52,9 +52,11 @@ class MetricsCallback:
     def __init__(self, num_classes):
         # loss used during training
         self.epoch = -1
-        self.train_loss = 0
+        # dummy placeholder, gets reinitialized per epoch
+        self.train_loss = torch.tensor(0.0)
         self.train_results = {}
-        self.val_loss = 0
+        # dummy placeholder, gets reinitialized per epoch
+        self.val_loss = torch.tensor(0.0)
         self.val_results = {}
 
         # torchmetrics collection
@@ -69,7 +71,7 @@ class MetricsCallback:
 
     def on_train_start(self, trainer, epoch_idx):
         # keeping running loss on device
-        self.train_loss = torch.tensor(0, device=trainer.device)
+        self.train_loss = torch.tensor(0.0, device=trainer.device)
         self.train_metrics.to(trainer.device)
 
     def on_train_batch(self, trainer, batch_loss, y_pred, y, batch_idx, epoch_idx):
@@ -89,7 +91,7 @@ class MetricsCallback:
 
     def on_val_start(self, trainer, epoch_idx):
         # keeping running loss on device
-        self.val_loss = torch.tensor(0, device=trainer.device)
+        self.val_loss = torch.tensor(0.0, device=trainer.device)
         self.val_metrics.to(trainer.device)
 
     def on_val_batch(self, trainer, batch_loss, y_pred, y, batch_idx, epoch_idx):
