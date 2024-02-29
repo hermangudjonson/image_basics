@@ -12,6 +12,16 @@ from torch.utils.benchmark import Compare, Timer
 from image_basics import train, utils
 
 
+def _get_output_dir(output_dir=None):
+    """Resolve output dir for experiments in this module."""
+    output_dir = (
+        Path(output_dir)
+        if output_dir is not None
+        else utils.WORKING_DIR / "results/gpu_init"
+    )
+    return output_dir
+
+
 def _save_json(data_dict: dict, json_file: Path):
     """Save dictionary to json (helper)."""
     json_file.parent.mkdir(parents=True, exist_ok=True)
@@ -55,11 +65,7 @@ def batch_time(
         device to use, by default gpu/cuda if available
     """
     batch_sizes = batch_sizes if batch_sizes is not None else [2, 4]
-    output_dir = (
-        Path(output_dir)
-        if output_dir is not None
-        else utils.WORKING_DIR / "results/gpu_init"
-    )
+    output_dir = _get_output_dir(output_dir)
 
     results = {}
     timer_list = []
@@ -133,6 +139,65 @@ def batch_time(
     timer_compare.print()
     pprint(results)
     _save_json(results, output_dir / "batch_timing.json")
+
+
+def matmul_time(model_sizes=None, batch_sizes=None, output_dir=None, device=None):
+    """Sweep idealized 'model' sizes across different batch sizes.
+
+    the idealized model proxy is a simple matrix multiplication, standard image input dimensions (flattened).
+    our objective is to see where optimal GPU efficiency saturates in ideal conditions
+    """
+    model_sizes = (
+        model_sizes if model_sizes is not None else [3e6, 6e6, 12e6, 24e6, 48e6]
+    )  # 200MF to ~10GF regime
+    batch_sizes = (
+        batch_sizes
+        if batch_sizes is not None
+        else [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    )
+    output_dir = _get_output_dir(output_dir)
+
+    device = utils.get_device(device)
+    print(f"using device {device}")
+
+    results = []
+    timer_list = []
+
+    for nparams in model_sizes:
+        for b in batch_sizes:
+            # matmul
+            image_size = 3 * 244 * 244
+            A = torch.randn(int(nparams / image_size), image_size, device=device)
+            v = torch.randn(image_size, b, device=device)
+            timer = Timer(
+                "A.matmul(v)",
+                globals={"A": A, "v": v},
+                description=f"batch {b}",
+                sub_label=f"model size {nparams}",
+            )
+            timer_result = timer.blocked_autorange(min_run_time=1)
+            matmul_time = timer_result.median
+            timer_list.append(timer_result)
+
+            results.append(
+                {
+                    "model_size": nparams,
+                    "batch_size": b,
+                    "matmul_time": matmul_time,
+                    "matmul_time_per_image": matmul_time / b,
+                    "matmul_images_per_s": b / matmul_time,
+                }
+            )
+
+    # display and save results
+    timer_compare = Compare(timer_list)
+    timer_compare.print()
+    pprint(results)
+    _save_json(results, output_dir / "matmul_timing.json")
+
+
+def dl_time():
+    pass
 
 
 if __name__ == "__main__":
