@@ -197,6 +197,7 @@ def matmul_time(model_sizes=None, batch_sizes=None, output_dir=None, device=None
 
 
 def dl_time():
+    # sweep dataloader num threads (and pin_memory) against batch size to see if affects GPU efficiency
     pass
 
 
