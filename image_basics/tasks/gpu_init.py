@@ -238,7 +238,8 @@ def dl_time(
                     globals={"iter_dataloader": iter_dataloader, "trainer": trainer},
                     description=f"batch {b}",
                     label=f"pin memory {pin_memory}",
-                    num_threads=num_proc,
+                    sub_label=f"num threads {num_proc}",
+                    num_threads=max(num_proc, 0),
                 )
                 timer_result = timer.blocked_autorange(min_run_time=1)
                 iterdl_time = timer_result.median
