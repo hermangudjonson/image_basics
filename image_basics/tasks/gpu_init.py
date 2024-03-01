@@ -258,6 +258,9 @@ def dl_time(
                 results.append(
                     dict(
                         **{
+                            "pin_memory": pin_memory,
+                            "num_proc": num_proc,
+                            "batch_size": b,
                             "iterdl_time": iterdl_time,
                             "iterdl_time_per_batch": iterdl_time
                             / len(trainer.train_dl),
