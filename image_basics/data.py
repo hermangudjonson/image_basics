@@ -5,6 +5,7 @@ things to look out for:
  - control data package cacheing
  - provide specific target according to task
 """
+
 import timm
 import datasets
 from pathlib import Path
@@ -150,6 +151,7 @@ def create_dataloaders(
     use_test_size: bool = False,
     cache_dir: str | Path | None = None,
     num_proc: int = 4,
+    pin_memory: bool = False,
     train_subset: int | None = None,
     val_subset: int | None = None,
     train_batch_size: int = 32,
@@ -183,6 +185,7 @@ def create_dataloaders(
         batch_size=train_batch_size,
         shuffle=shuffle_train,
         num_workers=num_proc,
+        pin_memory=pin_memory,
         drop_last=True,
     )
     val_dl = DataLoader(
@@ -190,6 +193,7 @@ def create_dataloaders(
         batch_size=val_batch_size,
         shuffle=False,
         num_workers=num_proc,
+        pin_memory=pin_memory,
         drop_last=False,
     )
     return train_dl, val_dl

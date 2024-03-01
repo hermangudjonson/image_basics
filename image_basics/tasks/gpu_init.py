@@ -1,5 +1,5 @@
-"""Initial GPU evaluation tasks.
-"""
+"""Initial GPU evaluation tasks."""
+
 import json
 import time
 from pathlib import Path
@@ -196,8 +196,91 @@ def matmul_time(model_sizes=None, batch_sizes=None, output_dir=None, device=None
     _save_json(results, output_dir / "matmul_timing.json")
 
 
-def dl_time():
-    pass
+def dl_time(
+    batch_sizes=None, subset_size=1024, num_epochs=2, output_dir=None, device=None
+):
+    # sweep dataloader num threads (and pin_memory) against batch size to see if affects GPU efficiency
+    def iter_dataloader(dl, device):
+        """Iterate through dataloader, loading to devie."""
+        for i, batch in enumerate(dl):
+            X, y = batch["image"], batch["target"]
+            X, y = X.to(device), y.to(device)
+
+    batch_sizes = (
+        batch_sizes if batch_sizes is not None else [2, 4, 8, 16, 32, 64, 128, 256, 512]
+    )
+    output_dir = _get_output_dir(output_dir)
+
+    cpu_nthreads = torch.get_num_threads()
+    print(f"detected {cpu_nthreads} threads")
+
+    device = utils.get_device(device)
+    print(f"using device {device}")
+
+    results = []
+    timer_list = []
+    hparams = easy_pets_recipe(
+        subset_size=subset_size, num_epochs=num_epochs, device=device
+    )
+    for pin_memory in [False, True]:
+        for num_proc in range(0, cpu_nthreads + 1):
+            for b in batch_sizes:
+                hparams["data_params"]["train_batch_size"] = b
+                hparams["data_params"]["val_batch_size"] = b
+                hparams["data_params"]["num_proc"] = num_proc
+                hparams["data_params"]["pin_memory"] = pin_memory
+
+                trainer = train.create_trainer(**hparams)
+
+                # forward pass
+                timer = Timer(
+                    "iter_dataloader(trainer.train_dl, trainer.device)",
+                    globals={"iter_dataloader": iter_dataloader, "trainer": trainer},
+                    description=f"batch {b}",
+                    label=f"pin memory {pin_memory}",
+                    num_threads=num_proc,
+                )
+                timer_result = timer.blocked_autorange(min_run_time=1)
+                iterdl_time = timer_result.median
+                timer_list.append(timer_result)
+
+                # trainer.train()
+                if device.type == "gpu":
+                    torch.cuda.synchronize()
+                train_start = time.time()
+                trainer.train()
+                if device.type == "gpu":
+                    torch.cuda.synchronize()
+                train_time = time.time() - train_start
+                print(f"trainer used device {trainer.device}")
+
+                results.append(
+                    dict(
+                        **{
+                            "iterdl_time": iterdl_time,
+                            "iterdl_time_per_batch": iterdl_time
+                            / len(trainer.train_dl),
+                            "iterdl_time_per_image": iterdl_time
+                            / (b * len(trainer.train_dl)),
+                            "iterdl_images_per_s": (b * len(trainer.train_dl))
+                            / iterdl_time,
+                            "train_time": train_time,
+                            "train_step_time": train_time
+                            / (trainer.num_epochs * len(trainer.train_dl)),
+                            "train_images_per_s": (
+                                trainer.num_epochs * len(trainer.train_dl) * b
+                            )
+                            / train_time,
+                        },
+                        **trainer.best_metrics,
+                    )
+                )
+
+    # display and save results
+    timer_compare = Compare(timer_list)
+    timer_compare.print()
+    pprint(results)
+    _save_json(results, output_dir / "dataloader_timing.json")
 
 
 if __name__ == "__main__":
