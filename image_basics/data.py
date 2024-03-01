@@ -90,6 +90,9 @@ def create_dataset(
     returns train_ds, test_ds
     standardizes data feature names to "image" and "target"
     """
+    # 0 is num_workers default in dataloader, converting to default None for dataset
+    num_proc = num_proc if num_proc > 0 else None
+
     # default save to $HF_HOME set in utils
     hfds = datasets.load_dataset(
         _get_data_name(data_name), cache_dir=cache_dir, num_proc=num_proc
