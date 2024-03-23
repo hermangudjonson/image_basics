@@ -362,6 +362,7 @@ def create_trainer(
     num_epochs=1,
     epoch_interval=1,
     device=None,
+    callbacks=None,
 ):
     """Recipe-style entry point that creates a training task.
 
@@ -394,4 +395,5 @@ def create_trainer(
         num_epochs=num_epochs,
         epoch_interval=epoch_interval,
         device=device,
+        callbacks=callbacks,
     )
