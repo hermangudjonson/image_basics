@@ -1,6 +1,7 @@
 """Initial GPU evaluation tasks."""
 
 import json
+import os
 import time
 from pathlib import Path
 from pprint import pprint
@@ -307,6 +308,9 @@ def profile(batch_sizes=None, output_dir=None, device=None):
     device = utils.get_device(device)
     print(f"using device {device}")
     print(torch.profiler.supported_activities())
+    print(f"num cpus: {os.cpu_count()}")
+
+    torch.set_num_threads(1)
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
     hparams["data_params"]["num_proc"] = 2
