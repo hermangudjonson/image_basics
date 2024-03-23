@@ -297,8 +297,10 @@ class ProfileCallback:
 
 
 def profile(batch_sizes=None, output_dir=None, device=None):
-    # profile trace and memory for a few training loops at different batch sizes
-    # simplify recipe to only train 10 batches
+    """Profile execution and memory for a few training loops at different batch sizes.
+
+    simplify recipe to only train ~5 batches
+    """
     batch_sizes = batch_sizes if batch_sizes is not None else [4, 128, 512]
     output_dir = _get_output_dir(output_dir)
 
@@ -306,6 +308,7 @@ def profile(batch_sizes=None, output_dir=None, device=None):
     print(f"using device {device}")
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
+    hparams["data_params"]["num_proc"] = 2
     for b in batch_sizes:
         hparams["data_params"]["train_subset"] = 6 * b
         hparams["data_params"]["val_subset"] = 6 * b
