@@ -287,5 +287,50 @@ def dl_time(
     _save_json(results, output_dir / "dataloader_timing.json")
 
 
+class ProfileCallback:
+    def __init__(self, prof):
+        self.prof = prof
+
+    def on_train_batch(self, trainer, batch_loss, y_pred, y, batch_idx, epoch_idx):
+        # step profiler context
+        self.prof.step()
+
+
+def profile(batch_sizes=None, output_dir=None, device=None):
+    # profile trace and memory for a few training loops at different batch sizes
+    # simplify recipe to only train 10 batches
+    batch_sizes = batch_sizes if batch_sizes is not None else [2, 8, 128]
+    output_dir = _get_output_dir(output_dir)
+
+    device = utils.get_device(device)
+    print(f"using device {device}")
+
+    hparams = easy_pets_recipe(num_epochs=1, device=device)
+    for b in batch_sizes:
+        hparams["data_params"]["train_subset"] = 10 * b
+        hparams["data_params"]["val_subset"] = 10 * b
+        hparams["data_params"]["train_batch_size"] = b
+        hparams["data_params"]["val_batch_size"] = b
+
+        # save tensorboard-style trace dir
+        trace_dir = (output_dir / f"pets_batch_{b}_trace/").as_posix()
+        with torch.profiler.profile(
+            schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
+            on_trace_ready=torch.profiler.tensorboard_trace_handler(
+                dir_name=trace_dir, use_gzip=True
+            ),
+            profile_memory=True,
+        ) as prof:
+            # additionally provide profile callback
+            hparams["callbacks"] = train.default_callbacks(num_classes=2) + [
+                ProfileCallback(prof)
+            ]
+            trainer = train.create_trainer(**hparams)
+            trainer.train()
+
+        print(prof.key_averages())
+        pprint(torch.cuda.memory_stats())
+
+
 if __name__ == "__main__":
     fire.Fire()

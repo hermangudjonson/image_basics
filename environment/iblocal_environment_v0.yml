@@ -29,3 +29,4 @@ dependencies:
   - pip
   - pip:
       - -e /Users/hermangudjonson/Dropbox/ml_practice/pytorch/image_practice/image_basics
+      - HolisticTraceAnalysis
