@@ -5,6 +5,7 @@ import os
 import time
 from pathlib import Path
 from pprint import pprint
+import itertools
 
 import fire
 import torch
@@ -198,22 +199,39 @@ def matmul_time(model_sizes=None, batch_sizes=None, output_dir=None, device=None
 
 
 def dl_time(
-    batch_sizes=None, subset_size=1024, num_epochs=2, output_dir=None, device=None
+    batch_sizes=None,
+    pin_memory_states=None,
+    num_processes=None,
+    prefetch_factors=None,
+    subset_size=1024,
+    num_epochs=2,
+    output_dir=None,
+    device=None,
 ):
     # sweep dataloader num threads (and pin_memory) against batch size to see if affects GPU efficiency
-    def iter_dataloader(dl, device):
+    def iter_dataloader(dl, device, non_blocking):
         """Iterate through dataloader, loading to devie."""
         for i, batch in enumerate(dl):
             X, y = batch["image"], batch["target"]
-            X, y = X.to(device), y.to(device)
+            X, y = (
+                X.to(device, non_blocking=non_blocking),
+                y.to(device, non_blocking=non_blocking),
+            )
 
     batch_sizes = (
         batch_sizes if batch_sizes is not None else [2, 4, 8, 16, 32, 64, 128, 256, 512]
     )
+    pin_memory_states = (
+        pin_memory_states if pin_memory_states is not None else [False, True]
+    )
+    num_processes = (
+        num_processes if num_processes is not None else [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    )
+    prefetch_factors = prefetch_factors if prefetch_factors is not None else [None]
     output_dir = _get_output_dir(output_dir)
 
     cpu_nthreads = torch.get_num_threads()
-    print(f"detected {cpu_nthreads} threads")
+    print(f"torch detected {cpu_nthreads} threads")
 
     device = utils.get_device(device)
     print(f"using device {device}")
@@ -223,63 +241,63 @@ def dl_time(
     hparams = easy_pets_recipe(
         subset_size=subset_size, num_epochs=num_epochs, device=device
     )
-    for pin_memory in [False, True]:
-        for num_proc in range(0, cpu_nthreads + 1):
-            for b in batch_sizes:
-                hparams["data_params"]["train_batch_size"] = b
-                hparams["data_params"]["val_batch_size"] = b
-                hparams["data_params"]["num_proc"] = num_proc
-                hparams["data_params"]["pin_memory"] = pin_memory
+    for pin_memory, num_proc, prefetch_factor, b in itertools.product(
+        pin_memory_states, num_processes, prefetch_factors, batch_sizes
+    ):
+        hparams["data_params"]["train_batch_size"] = b
+        hparams["data_params"]["val_batch_size"] = b
+        hparams["data_params"]["num_proc"] = num_proc
+        hparams["data_params"]["pin_memory"] = pin_memory
+        hparams["non_blocking"] = pin_memory
+        hparams["data_params"]["prefetch_factor"] = prefetch_factor
 
-                trainer = train.create_trainer(**hparams)
+        trainer = train.create_trainer(**hparams)
 
-                # forward pass
-                timer = Timer(
-                    "iter_dataloader(trainer.train_dl, trainer.device)",
-                    globals={"iter_dataloader": iter_dataloader, "trainer": trainer},
-                    description=f"batch {b}",
-                    label=f"pin memory {pin_memory}",
-                    sub_label=f"num threads {num_proc}",
-                    num_threads=max(num_proc, 1),
-                )
-                timer_result = timer.blocked_autorange(min_run_time=1)
-                iterdl_time = timer_result.median
-                timer_list.append(timer_result)
+        # forward pass
+        timer = Timer(
+            "iter_dataloader(trainer.train_dl, trainer.device, trainer.non_blocking)",
+            globals={"iter_dataloader": iter_dataloader, "trainer": trainer},
+            description=f"batch {b}",
+            label=f"pin memory {pin_memory}",
+            sub_label=f"num threads {num_proc} prefetch {prefetch_factor}",
+            num_threads=max(num_proc, 1),
+        )
+        timer_result = timer.blocked_autorange(min_run_time=1)
+        iterdl_time = timer_result.median
+        timer_list.append(timer_result)
 
-                # trainer.train()
-                if device.type == "gpu":
-                    torch.cuda.synchronize()
-                train_start = time.time()
-                trainer.train()
-                if device.type == "gpu":
-                    torch.cuda.synchronize()
-                train_time = time.time() - train_start
-                print(f"trainer used device {trainer.device}")
+        # trainer.train()
+        if device.type == "gpu":
+            torch.cuda.synchronize()
+        train_start = time.time()
+        trainer.train()
+        if device.type == "gpu":
+            torch.cuda.synchronize()
+        train_time = time.time() - train_start
+        print(f"trainer used device {trainer.device}")
 
-                results.append(
-                    dict(
-                        **{
-                            "pin_memory": pin_memory,
-                            "num_proc": num_proc,
-                            "batch_size": b,
-                            "iterdl_time": iterdl_time,
-                            "iterdl_time_per_batch": iterdl_time
-                            / len(trainer.train_dl),
-                            "iterdl_time_per_image": iterdl_time
-                            / (b * len(trainer.train_dl)),
-                            "iterdl_images_per_s": (b * len(trainer.train_dl))
-                            / iterdl_time,
-                            "train_time": train_time,
-                            "train_step_time": train_time
-                            / (trainer.num_epochs * len(trainer.train_dl)),
-                            "train_images_per_s": (
-                                trainer.num_epochs * len(trainer.train_dl) * b
-                            )
-                            / train_time,
-                        },
-                        **trainer.best_metrics,
+        results.append(
+            dict(
+                **{
+                    "pin_memory_non_blocking": pin_memory,
+                    "num_proc": num_proc,
+                    "prefetch_factor": prefetch_factor,
+                    "batch_size": b,
+                    "iterdl_time": iterdl_time,
+                    "iterdl_time_per_batch": iterdl_time / len(trainer.train_dl),
+                    "iterdl_time_per_image": iterdl_time / (b * len(trainer.train_dl)),
+                    "iterdl_images_per_s": (b * len(trainer.train_dl)) / iterdl_time,
+                    "train_time": train_time,
+                    "train_step_time": train_time
+                    / (trainer.num_epochs * len(trainer.train_dl)),
+                    "train_images_per_s": (
+                        trainer.num_epochs * len(trainer.train_dl) * b
                     )
-                )
+                    / train_time,
+                },
+                **trainer.best_metrics,
+            )
+        )
 
     # display and save results
     timer_compare = Compare(timer_list)
