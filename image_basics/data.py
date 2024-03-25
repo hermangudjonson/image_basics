@@ -155,6 +155,7 @@ def create_dataloaders(
     cache_dir: str | Path | None = None,
     num_proc: int = 4,
     pin_memory: bool = False,
+    prefetch_factor: int | None = None,
     train_subset: int | None = None,
     val_subset: int | None = None,
     train_batch_size: int = 32,
@@ -190,6 +191,7 @@ def create_dataloaders(
         num_workers=num_proc,
         pin_memory=pin_memory,
         drop_last=True,
+        prefetch_factor=prefetch_factor,
     )
     val_dl = DataLoader(
         val_ds,
@@ -198,6 +200,7 @@ def create_dataloaders(
         num_workers=num_proc,
         pin_memory=pin_memory,
         drop_last=False,
+        prefetch_factor=prefetch_factor,
     )
     return train_dl, val_dl
 
