@@ -309,12 +309,12 @@ def profile(batch_sizes=None, output_dir=None, device=None):
     print(f"using device {device}")
     print(torch.profiler.supported_activities())
     print(f"num cpus: {os.cpu_count()}")
-    print(f"torch num thredas: {torch.get_num_threads()}")
+    print(f"torch num threads: {torch.get_num_threads()}")
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
     hparams["data_params"]["num_proc"] = 2
     # try to increase prefetch
-    hparams["data_params"]["prefetch_factor"] = 4
+    hparams["data_params"]["prefetch_factor"] = 5
     # try pin memory with non blocking
     hparams["data_params"]["pin_memory"] = True
     hparams["non_blocking"] = True
