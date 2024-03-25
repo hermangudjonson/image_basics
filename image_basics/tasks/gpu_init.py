@@ -314,7 +314,7 @@ def profile(batch_sizes=None, output_dir=None, device=None):
     hparams = easy_pets_recipe(num_epochs=1, device=device)
     hparams["data_params"]["num_proc"] = 2
     # try to increase prefetch
-    hparams["data_params"]["prefetch_factor"] = 3
+    hparams["data_params"]["prefetch_factor"] = 4
     # try pin memory with non blocking
     hparams["data_params"]["pin_memory"] = True
     hparams["non_blocking"] = True
