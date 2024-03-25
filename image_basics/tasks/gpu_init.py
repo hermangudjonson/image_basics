@@ -312,7 +312,7 @@ def profile(batch_sizes=None, output_dir=None, device=None):
     print(f"torch num thredas: {torch.get_num_threads()}")
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
-    hparams["data_params"]["num_proc"] = 3
+    hparams["data_params"]["num_proc"] = 4
     for b in batch_sizes:
         hparams["data_params"]["train_subset"] = 6 * b
         hparams["data_params"]["val_subset"] = 6 * b
