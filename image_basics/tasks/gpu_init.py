@@ -310,10 +310,11 @@ def profile(batch_sizes=None, output_dir=None, device=None):
     print(torch.profiler.supported_activities())
     print(f"num cpus: {os.cpu_count()}")
 
+    # trying to limit num threads used for launching kernels
     torch.set_num_threads(1)
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
-    hparams["data_params"]["num_proc"] = 2
+    hparams["data_params"]["num_proc"] = 0
     for b in batch_sizes:
         hparams["data_params"]["train_subset"] = 6 * b
         hparams["data_params"]["val_subset"] = 6 * b
@@ -321,16 +322,16 @@ def profile(batch_sizes=None, output_dir=None, device=None):
         hparams["data_params"]["val_batch_size"] = b
 
         # save tensorboard-style trace dir
-        trace_dir = (output_dir / f"pets_batch_{b}_trace/").as_posix()
+        # trace_dir = (output_dir / f"pets_batch_{b}_trace/").as_posix()
         with torch.profiler.profile(
             activities=[
                 torch.profiler.ProfilerActivity.CPU,
                 torch.profiler.ProfilerActivity.CUDA,
             ],
             schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
-            on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                dir_name=trace_dir, use_gzip=False
-            ),
+            # on_trace_ready=torch.profiler.tensorboard_trace_handler(
+            #     dir_name=trace_dir, use_gzip=False
+            # ),
             profile_memory=True,
         ) as prof:
             # additionally provide profile callback
@@ -340,8 +341,13 @@ def profile(batch_sizes=None, output_dir=None, device=None):
             trainer = train.create_trainer(**hparams)
             trainer.train()
 
-        print(prof.key_averages())
-        pprint(torch.cuda.memory_stats())
+        # print(prof.key_averages())
+        prof.export_chrome_trace(
+            (output_dir / f"pets_batch_{b}_trace.json.gz").as_posix()
+        )
+        # pprint(torch.cuda.memory_stats())
+        mem_stats = torch.cuda.memory_stats()
+        print(f"peak memory used: {mem_stats['allocated_bytes.all.peak'] / 1e9:.3f}GB")
 
 
 if __name__ == "__main__":
