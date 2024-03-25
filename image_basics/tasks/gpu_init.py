@@ -313,6 +313,9 @@ def profile(batch_sizes=None, output_dir=None, device=None):
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
     hparams["data_params"]["num_proc"] = 5
+    # try pin memory with non blocking
+    hparams["data_params"]["pin_memory"] = True
+    hparams["non_blocking"] = True
     for b in batch_sizes:
         hparams["data_params"]["train_subset"] = 6 * b
         hparams["data_params"]["val_subset"] = 6 * b
