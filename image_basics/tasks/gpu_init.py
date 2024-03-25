@@ -309,13 +309,10 @@ def profile(batch_sizes=None, output_dir=None, device=None):
     print(f"using device {device}")
     print(torch.profiler.supported_activities())
     print(f"num cpus: {os.cpu_count()}")
-
-    # trying to limit num threads used for launching kernels
-    # torch.set_num_threads(1)
-    # torch.set_num_interop_threads(1)
+    print(f"torch num thredas: {torch.get_num_threads()}")
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
-    hparams["data_params"]["num_proc"] = 0
+    hparams["data_params"]["num_proc"] = 3
     for b in batch_sizes:
         hparams["data_params"]["train_subset"] = 6 * b
         hparams["data_params"]["val_subset"] = 6 * b
