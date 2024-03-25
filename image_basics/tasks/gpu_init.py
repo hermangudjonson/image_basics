@@ -312,6 +312,7 @@ def profile(batch_sizes=None, output_dir=None, device=None):
 
     # trying to limit num threads used for launching kernels
     torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
     hparams["data_params"]["num_proc"] = 0

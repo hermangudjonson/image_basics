@@ -224,6 +224,7 @@ class SimpleTrainer:
         epoch_interval=1,
         device=None,
         callbacks=None,
+        non_blocking=False,
     ):
         # params reflect training recipe, does not change trainer state
         # core elements
@@ -237,6 +238,7 @@ class SimpleTrainer:
         self.epoch_interval = epoch_interval
         self.device = device
         self.callbacks = callbacks
+        self.non_blocking = non_blocking
 
     def _init_trainer(self):
         # prepare trainer, may change trainer state
@@ -315,7 +317,8 @@ class SimpleTrainer:
         self.on_train_start(epoch)
         for i, batch in enumerate(self.train_dl):
             X, y = batch["image"], batch["target"]
-            X, y = X.to(self.device), y.to(self.device)
+            X = X.to(self.device, non_blocking=self.non_blocking)
+            y = y.to(self.device, non_blocking=self.non_blocking)
 
             # forward pass
             y_pred = self.model(X)
@@ -363,6 +366,7 @@ def create_trainer(
     epoch_interval=1,
     device=None,
     callbacks=None,
+    non_blocking=False,
 ):
     """Recipe-style entry point that creates a training task.
 
@@ -396,4 +400,5 @@ def create_trainer(
         epoch_interval=epoch_interval,
         device=device,
         callbacks=callbacks,
+        non_blocking=non_blocking,
     )
