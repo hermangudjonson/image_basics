@@ -357,6 +357,8 @@ def profile(batch_sizes=None, output_dir=None, device=None):
             #     dir_name=trace_dir, use_gzip=False
             # ),
             profile_memory=True,
+            record_shapes=True,
+            with_stack=True,
         ) as prof:
             # additionally provide profile callback
             hparams["callbacks"] = train.default_callbacks(num_classes=2) + [
