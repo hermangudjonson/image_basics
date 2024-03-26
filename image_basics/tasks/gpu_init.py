@@ -330,17 +330,20 @@ def profile(batch_sizes=None, output_dir=None, device=None):
     print(f"torch num threads: {torch.get_num_threads()}")
 
     hparams = easy_pets_recipe(num_epochs=1, device=device)
-    hparams["data_params"]["num_proc"] = 2
+    hparams["data_params"]["num_proc"] = 4
     # try to increase prefetch
-    hparams["data_params"]["prefetch_factor"] = 5
+    # hparams["data_params"]["prefetch_factor"] = 5
     # try pin memory with non blocking
-    hparams["data_params"]["pin_memory"] = True
-    hparams["non_blocking"] = True
+    # hparams["data_params"]["pin_memory"] = True
+    # hparams["non_blocking"] = True
     for b in batch_sizes:
         hparams["data_params"]["train_subset"] = 6 * b
         hparams["data_params"]["val_subset"] = 6 * b
         hparams["data_params"]["train_batch_size"] = b
         hparams["data_params"]["val_batch_size"] = b
+
+        # start memory recording
+        torch.cuda.memory._record_memory_history()
 
         # save tensorboard-style trace dir
         # trace_dir = (output_dir / f"pets_batch_{b}_trace/").as_posix()
@@ -362,13 +365,28 @@ def profile(batch_sizes=None, output_dir=None, device=None):
             trainer = train.create_trainer(**hparams)
             trainer.train()
 
+        # save memory snapshot
+        try:
+            torch.cuda.memory._dump_snapshot(
+                (output_dir / f"pets_batch_{b}_memory_snapshot.pkl").as_posix()
+            )
+        except Exception as e:
+            print(f"Failed to capture memory snapshot {e}")
+        # stop memory recording
+        torch.cuda.memory._record_memory_history(enabled=None)
+
         # print(prof.key_averages())
         prof.export_chrome_trace(
             (output_dir / f"pets_batch_{b}_trace.json.gz").as_posix()
         )
+        prof.export_memory_timeline(
+            (output_dir / f"pets_batch_{b}_memory_profile.html").as_posix()
+        )
+
         # pprint(torch.cuda.memory_stats())
         mem_stats = torch.cuda.memory_stats()
         print(f"peak memory used: {mem_stats['allocated_bytes.all.peak'] / 1e9:.3f}GB")
+        torch.cuda.reset_peak_memory_stats()
 
 
 if __name__ == "__main__":
